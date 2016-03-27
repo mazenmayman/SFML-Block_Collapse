@@ -109,7 +109,7 @@ int main()
     }
     
     
-    /*** Texts ***/
+      /*** Texts ***/
     // get the font
     sf::Font font;
     if (!font.loadFromFile(resourcePath() + "sansation.ttf")) {
@@ -169,9 +169,9 @@ int main()
                         }
                     }
                 }
-                
+   
             }
-            
+
         }
         
         // drawing
@@ -231,7 +231,7 @@ void gravitate(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[
 }
 
 void move(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], bool once){
-    
+
     for(int j = 0; j < cols; j++){
         
         int i = 0;
