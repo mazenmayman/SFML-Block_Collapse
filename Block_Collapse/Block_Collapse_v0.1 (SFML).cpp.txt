@@ -31,29 +31,33 @@ using namespace std;
 #define rows   5
 #define cols    5
 #define tile_size   100
-#define space_size 0.1*tile_size
+#define space_size  (0.1*tile_size)
 
-#define screen_width    (cols + 2) * tile_size
-#define screen_height   (rows + 2) * tile_size
+#define screen_width    ((cols + 2) * tile_size)
+#define screen_height   ((rows + 2) * tile_size)
 
-#define game_width  cols * tile_size
-#define game_height rows * tile_size
+#define game_width  (cols * tile_size)
+#define game_height (rows * tile_size)
 
-#define game_xpos   tile_size
-#define game_ypos   tile_size
+#define game_xpos   (tile_size)
+#define game_ypos   (tile_size)
 
 #define square_size (tile_size - space_size)
 
 
 enum Game_Tile { empty, red, green, blue, yellow };
 
-void intialize_restart(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], Text &result_text, bool &game_end);
-void update_game(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], Vector2i mouse_pos);
-void gravitate(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], int row, const int col, const int last_row);
-void move(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], bool once = false);
-void get_game_copies(Game_Tile game_array_copy[rows][cols], Game_Tile game_array[rows][cols], RectangleShape game_rectangles_copy[rows][cols], RectangleShape game_rectangles[rows][cols]);
-bool checker(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], int row, int col, Game_Tile removed_color, bool remove, int &count, bool finish_check);
-bool game_finished(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols]);
+// declare the game_array and the game rectangles
+Game_Tile game_array[rows][cols], game_array_copy[rows][cols];
+RectangleShape game_rectangles[rows][cols];
+
+void intialize_restart( Text &result_text, bool &game_end);
+void update_game(Vector2i mouse_pos);
+void gravitate(int row, const int col, const int last_row);
+void move(bool once = false);
+void get_game_array_copy();
+bool game_finished();
+bool checker(int row, int col, Game_Tile removed_color, bool remove, int &count, bool finish_check);
 
 void set_tile_color(Game_Tile game_tile, RectangleShape &rect){
     switch (game_tile) {
@@ -87,9 +91,6 @@ int main()
     game_rect.setFillColor(Color::Blue);
     game_rect.setPosition(game_xpos, game_ypos);
     
-    // declare the game_array and the game rectangles
-    Game_Tile game_array[rows][cols];
-    RectangleShape game_rectangles[rows][cols];
     // generate random colors and put rectangles in positions.
     float posx = game_xpos + space_size/2, posy = game_ypos + space_size/2;
     for (int i = 0; i < rows; i++)
@@ -152,7 +153,7 @@ int main()
                         window.close();
                     
                     if (event.key.code == Keyboard::Space){
-                        intialize_restart(game_array, game_rectangles, result_text, game_end);
+                        intialize_restart(result_text, game_end);
                     }
                     
                 }
@@ -162,14 +163,13 @@ int main()
                 if(event.type == Event::MouseButtonPressed){
                     if(event.mouseButton.button == Mouse::Left){
                         Vector2i mouse_pos = Vector2i (event.mouseButton.x, event.mouseButton.y);
-                        update_game(game_array, game_rectangles, mouse_pos);
-                        game_end = game_finished(game_array, game_rectangles);
+                        update_game(mouse_pos);
+                        game_end = game_finished();
                         if(game_end){
                             result_text.setString("Game Over! Press Space to restart");
                         }
                     }
                 }
-   
             }
 
         }
@@ -187,8 +187,7 @@ int main()
 }
 
 
-void intialize_restart(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], Text &result_text, bool &game_end){
-    
+void intialize_restart(Text &result_text, bool &game_end){
     // reset the game_rectangles & game_array
     for (int i = 0; i < rows; i++)
     {
@@ -207,7 +206,7 @@ void intialize_restart(Game_Tile game_array[rows][cols], RectangleShape game_rec
     game_end = false;
 }
 
-void update_game(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], Vector2i mouse_pos){
+void update_game(Vector2i mouse_pos){
     int row = (mouse_pos.y / tile_size) - 1;
     int col = (mouse_pos.x / tile_size) - 1;
     
@@ -215,12 +214,12 @@ void update_game(Game_Tile game_array[rows][cols], RectangleShape game_rectangle
     if(row >= 0 && row < rows && col >= 0 && col < cols){
         Game_Tile removed_color = game_array[row][col];
         int count = 0;
-        checker(game_array, game_rectangles, row, col, removed_color, false, count, false);
-        move(game_array, game_rectangles);
+        checker(row, col, removed_color, false, count, false);
+        move();
     }
 }
 
-void gravitate(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], int row, const int col, const int last_row) {
+void gravitate(int row, const int col, const int last_row) {
     for( ; row > last_row; --row ) {
         game_array[row][col] = game_array[row - 1][col];
         set_tile_color(game_array[row-1][col], game_rectangles[row][col]);
@@ -230,7 +229,7 @@ void gravitate(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[
     
 }
 
-void move(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], bool once){
+void move(bool once){
 
     for(int j = 0; j < cols; j++){
         
@@ -244,73 +243,84 @@ void move(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows]
         // start pulling
         for ( ; i < rows; ++i )
             if ( game_array[i][j] == empty ) {
-                gravitate(game_array, game_rectangles, i, j, last_row );
+                gravitate(i, j, last_row );
                 if ( once ) break;
             }
     }
 }
 
-void get_game_copies(Game_Tile game_array_copy[rows][cols], Game_Tile game_array[rows][cols], RectangleShape game_rectangles_copy[rows][cols], RectangleShape game_rectangles[rows][cols]){
+void get_game_array_copy(){
     for(int i = 0; i < rows; i++){
         for(int j = 0; j < cols; j++){
             game_array_copy[i][j] = game_array[i][j];
-            game_rectangles_copy[i][j].setFillColor(game_rectangles[i][j].getFillColor());
         }
     }
 }
 
+bool game_finished(){
+    int i, j;
+    for(i = 0; i < rows; i++){
+        for(j = 0; j < cols; j++){
+            int count = 0;
+            get_game_array_copy();
+            Game_Tile removed_color = game_array[i][j];
+            if(checker(i, j, removed_color, false, count, true)){
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
-bool checker(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols], int row, int col, Game_Tile removed_color, bool remove, int &count, bool finish_check){
-    if(row < 0 || row > rows-1 || col < 0 || col > cols-1){
+
+bool checker(int row, int col, Game_Tile removed_color, bool remove, int &count, bool finish_check){
+    if(row < 0 || row > rows-1 || col < 0 || col > cols-1 || removed_color == empty){
         // outside the game
         return 0;
     }
     
     // else, we are inside
-    if(game_array[row][col] != removed_color || removed_color == empty){
-        // the game tile is not the same color
-        return false;
+    if(finish_check){
+        if(game_array_copy[row][col] != removed_color){
+            // the game tile is not the same color
+            return false;
+        }
     }
-    
+    else{
+        if(game_array[row][col] != removed_color){
+            // the game tile is not the same color
+            return false;
+        }
+    }
     
     // Then the curr_tile is is the same color
     if(remove){
         // if it's a recursive call, then empty the curr_cell
-        set_tile_color(empty, game_rectangles[row][col]);
-        game_array[row][col] = empty;
+        if(finish_check){
+            game_array_copy[row][col] = empty;
+        }
+        else{
+            set_tile_color(empty, game_rectangles[row][col]);
+            game_array[row][col] = empty;
+        }
         count++;
     } // and
     
     // start recurse
-    while(checker(game_array, game_rectangles, row-1, col, removed_color, true, count, finish_check));  // up
-    while(checker(game_array, game_rectangles, row, col+1, removed_color, true, count, finish_check));  // right
-    while(checker(game_array, game_rectangles, row, col-1, removed_color, true, count, finish_check));  // left
-    while(checker(game_array, game_rectangles, row+1, col, removed_color, true, count, finish_check));  // down
+    while(checker(row-1, col, removed_color, true, count, finish_check));  // up
+    while(checker(row, col+1, removed_color, true, count, finish_check));  // right
+    while(checker(row, col-1, removed_color, true, count, finish_check));  // left
+    while(checker(row+1, col, removed_color, true, count, finish_check));  // down
     
     if(count){  // empty the original cell
-        set_tile_color(empty, game_rectangles[row][col]);
-        game_array[row][col] = empty;
+        if(finish_check){
+            game_array_copy[row][col] = empty;
+        }
+        else{
+            set_tile_color(empty, game_rectangles[row][col]);
+            game_array[row][col] = empty;
+        }
         return true;
     }
-    
     return false;
 }
-
-bool game_finished(Game_Tile game_array[rows][cols], RectangleShape game_rectangles[rows][cols]){
-    int i, j;
-    for(i = 0; i < rows; i++){
-        for(j = 0; j < cols; j++){
-            int count = 0;
-            Game_Tile removed_color = game_array[i][j];
-            Game_Tile game_array_copy[rows][cols];
-            RectangleShape game_rectangles_copy[rows][cols];
-            get_game_copies(game_array_copy, game_array, game_rectangles_copy, game_rectangles);
-            if(checker(game_array_copy, game_rectangles_copy, i, j, removed_color, false, count, true)){
-                return false;
-            }
-        }
-    }
-    
-    return true;
-}
-
